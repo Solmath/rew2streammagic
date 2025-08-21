@@ -13,7 +13,6 @@ from aiohttp import (
     ClientConnectorError,
     ClientError,
     ClientTimeout,
-    ServerTimeoutError,
 )
 from aiostreammagic import StreamMagicClient, EQBand, UserEQ, EQFilterType, Info
 from packaging.version import Version
@@ -23,6 +22,10 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Suppress aiohttp and aiostreammagic debug logs to reduce noise
+logging.getLogger("aiohttp").setLevel(logging.WARNING)
+logging.getLogger("aiostreammagic").setLevel(logging.WARNING)
 
 
 def parse_eq_file(file_path):
@@ -78,7 +81,7 @@ def parse_eq_file(file_path):
     return UserEQ(bands=bands)
 
 
-async def connect_and_apply_eq(host, user_eq, timeout=10):
+async def connect_and_apply_eq(host, user_eq, timeout=5):
     """Connect to StreamMagic device and apply EQ settings."""
     try:
         # Create session with timeout
@@ -113,6 +116,16 @@ async def connect_and_apply_eq(host, user_eq, timeout=10):
                     logger.error(f"Error applying EQ settings: {e}")
                     return False
 
+            except (TimeoutError, asyncio.TimeoutError):
+                logger.error(f"Connection timed out to {host}")
+                return False
+            except ClientConnectorError:
+                logger.error(f"Connection failed - device not reachable at {host}")
+                return False
+            except Exception as e:
+                logger.error(f"Error connecting to device: {e}")
+                return False
+
             finally:
                 try:
                     await client.disconnect()
@@ -122,17 +135,17 @@ async def connect_and_apply_eq(host, user_eq, timeout=10):
 
             return True
 
-    except ClientConnectorError as e:
-        logger.error(f"Connection failed - device not reachable at {host}: {e}")
+    except (TimeoutError, asyncio.TimeoutError):
+        logger.error(f"Connection timed out to {host}")
         return False
-    except ServerTimeoutError as e:
-        logger.error(f"Connection timed out to {host}: {e}")
+    except ClientConnectorError:
+        logger.error(f"Connection failed - device not reachable at {host}")
         return False
+    # except ServerTimeoutError:
+    #     logger.error(f"Server timeout connecting to {host}")
+    #     return False
     except ClientError as e:
         logger.error(f"HTTP client error connecting to {host}: {e}")
-        return False
-    except asyncio.TimeoutError:
-        logger.error(f"Operation timed out connecting to {host}")
         return False
     except OSError as e:
         logger.error(f"Network error connecting to {host}: {e}")
