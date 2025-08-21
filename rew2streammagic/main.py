@@ -23,9 +23,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Suppress aiohttp and aiostreammagic debug logs to reduce noise
-logging.getLogger("aiohttp").setLevel(logging.WARNING)
-logging.getLogger("aiostreammagic").setLevel(logging.WARNING)
+# Suppress all logs from libraries that spam tracebacks
+logging.getLogger("aiohttp").setLevel(logging.CRITICAL)
+logging.getLogger("aiostreammagic").setLevel(logging.CRITICAL)
+logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 
 def parse_eq_file(file_path):
@@ -141,9 +142,6 @@ async def connect_and_apply_eq(host, user_eq, timeout=5):
     except ClientConnectorError:
         logger.error(f"Connection failed - device not reachable at {host}")
         return False
-    # except ServerTimeoutError:
-    #     logger.error(f"Server timeout connecting to {host}")
-    #     return False
     except ClientError as e:
         logger.error(f"HTTP client error connecting to {host}: {e}")
         return False
