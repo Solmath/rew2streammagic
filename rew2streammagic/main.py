@@ -6,6 +6,7 @@ and extracting the first seven equalizer band settings.
 import sys
 import re
 import asyncio
+import ipaddress
 import logging
 import argparse
 from pathlib import Path
@@ -85,6 +86,15 @@ def parse_eq_file(file_path):
 
 async def connect_and_apply_eq(host, user_eq, timeout=5):
     """Connect to StreamMagic device and apply EQ settings."""
+
+    # Validate IP address
+    try:
+        # This will validate both IPv4 and IPv6 addresses
+        host = str(ipaddress.ip_address(host))
+    except ValueError as e:
+        logger.error(f"Invalid IP address: {host} - {e}")
+        return False
+
     try:
         # Create session with timeout
         timeout_config = ClientTimeout(total=timeout)
