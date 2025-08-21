@@ -22,7 +22,7 @@ rew2streammagic is a Python tool to parse Room EQ Wizard (REW) equalizer descrip
 1. Run the tool:
 
     ```sh
-    poetry run python -m rew2streammagic.main <path_to_eq_file>
+    poetry run rew2streammagic <path_to_eq_file>
     ```
 
 1. The tool will parse the file and send the EQ settings to your StreamMagic device, if it is supported by the API version.
