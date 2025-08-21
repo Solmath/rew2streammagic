@@ -7,6 +7,7 @@ import sys
 import re
 import asyncio
 import logging
+import argparse
 from pathlib import Path
 from aiohttp import (
     ClientSession,
@@ -133,8 +134,11 @@ async def connect_and_apply_eq(host, user_eq, timeout=5):
         return False
 
 
-async def main(eq_file_path, host, timeout=5):
+async def main(eq_file_path, host, timeout=5, dry_run=False):
     """Main application logic."""
+
+    if dry_run:
+        print("🔍 DRY RUN: Device connection will be skipped.")
 
     eq_file = Path(eq_file_path)
 
@@ -158,8 +162,12 @@ async def main(eq_file_path, host, timeout=5):
                 f"Band {band.index + 1}: Freq={band.freq}Hz, Gain={band.gain}dB, Q={band.q}"
             )
 
+        if dry_run:
+            print("🔍 DRY RUN: EQ file parsed successfully.")
+            return 0
+
         # Connect and apply EQ
-        success = await connect_and_apply_eq(host, user_eq)
+        success = await connect_and_apply_eq(host, user_eq, timeout)
 
         if success:
             print(f"✅ EQ settings successfully applied to device at {host}")
@@ -178,16 +186,45 @@ async def main(eq_file_path, host, timeout=5):
 
 def cli():
     """Command line interface for the script."""
-    if len(sys.argv) < 2:
-        print("Usage: python -m rew2streammagic.main <path_to_eq_file> [host_ip]")
-        print("Default host: 192.168.1.29")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Apply Room EQ Wizard settings to Cambridge CXN 100",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python -m rew2streammagic.main eq_file.txt
+  python -m rew2streammagic.main eq_file.txt --host 192.168.1.50
+  python -m rew2streammagic.main eq_file.txt --timeout 10 --dry-run
+        """,
+    )
 
-    eq_file = sys.argv[1]
-    host = sys.argv[2] if len(sys.argv) > 2 else "192.168.1.29"
+    parser.add_argument(
+        "eq_file", help="Path to Room EQ Wizard equalizer description file"
+    )
+
+    parser.add_argument(
+        "--host",
+        default="192.168.1.29",
+        help="IP address of the Cambridge CXN 100 device (default: 192.168.1.29)",
+    )
+
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=5,
+        help="Connection timeout in seconds (default: 5)",
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Parse EQ file but don't connect to device or apply settings",
+    )
 
     try:
-        exit_code = asyncio.run(main(eq_file, host))
+        args = parser.parse_args()
+        exit_code = asyncio.run(
+            main(args.eq_file, args.host, args.timeout, args.dry_run)
+        )
         sys.exit(exit_code)
     except KeyboardInterrupt:
         print("\nOperation cancelled by user")
