@@ -133,19 +133,14 @@ async def connect_and_apply_eq(host, user_eq, timeout=5):
         return False
 
 
-async def main():
+async def main(eq_file_path, host, timeout=5):
     """Main application logic."""
-    if len(sys.argv) < 2:
-        print("Usage: python -m rew2streammagic.main <path_to_eq_file> [host_ip]")
-        print("Default host: 192.168.1.29")
-        sys.exit(1)
 
-    eq_file = Path(sys.argv[1])
-    host = sys.argv[2] if len(sys.argv) > 2 else "192.168.1.29"
+    eq_file = Path(eq_file_path)
 
     if not eq_file.exists():
         logger.error(f"File not found: {eq_file}")
-        sys.exit(1)
+        return 1
 
     try:
         # Parse EQ file
@@ -154,7 +149,7 @@ async def main():
 
         if not user_eq.bands:
             logger.error("No equalizer bands found in the file.")
-            sys.exit(1)
+            return 1
 
         # Display parsed bands
         print("First 7 Equalizer Bands:")
@@ -183,8 +178,16 @@ async def main():
 
 def cli():
     """Command line interface for the script."""
+    if len(sys.argv) < 2:
+        print("Usage: python -m rew2streammagic.main <path_to_eq_file> [host_ip]")
+        print("Default host: 192.168.1.29")
+        sys.exit(1)
+
+    eq_file = sys.argv[1]
+    host = sys.argv[2] if len(sys.argv) > 2 else "192.168.1.29"
+
     try:
-        exit_code = asyncio.run(main())
+        exit_code = asyncio.run(main(eq_file, host))
         sys.exit(exit_code)
     except KeyboardInterrupt:
         print("\nOperation cancelled by user")
