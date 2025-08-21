@@ -75,6 +75,15 @@ async def main():
             # await client.set_equalizer_band_frequency(0, 100)
             await client.set_equalizer_params(user_eq)
 
+        await client.disconnect()
+
+
+def cli():
+    """
+    Command line interface for the script.
+    """
+    asyncio.run(main())
+
 
 if __name__ == "__main__":
     asyncio.run(main())
