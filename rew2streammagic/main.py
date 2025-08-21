@@ -91,48 +91,25 @@ async def connect_and_apply_eq(host, user_eq, timeout=5):
             logger.info(f"Attempting to connect to {host}")
             client = StreamMagicClient(host, session=session)
 
-            try:
-                await client.connect()
-                logger.info(f"Successfully connected to {host}")
+            await client.connect()
+            logger.info(f"Successfully connected to {host}")
 
-                # Get device info
-                try:
-                    info: Info = await client.get_info()
-                    logger.info(f"Device API version: {info.api_version}")
+            # Get device info
+            info: Info = await client.get_info()
+            logger.info(f"Device API version: {info.api_version}")
 
-                    if Version(info.api_version) >= Version("1.9"):
-                        logger.info("Applying EQ settings...")
-                        # Example of setting equalizer band gain and frequency
-                        # await client.set_equalizer_band_gain(0, 3.0)
-                        # await client.set_equalizer_band_frequency(0, 100)
-                        await client.set_equalizer_params(user_eq)
-                        logger.info("EQ settings applied successfully")
-                    else:
-                        logger.warning(
-                            f"API version {info.api_version} is too old. Minimum required: 1.9"
-                        )
-                        return False
-
-                except Exception as e:
-                    logger.error(f"Error applying EQ settings: {e}")
-                    return False
-
-            except (TimeoutError, asyncio.TimeoutError):
-                logger.error(f"Connection timed out to {host}")
+            if Version(info.api_version) >= Version("1.9"):
+                logger.info("Applying EQ settings...")
+                # Example of setting equalizer band gain and frequency
+                # await client.set_equalizer_band_gain(0, 3.0)
+                # await client.set_equalizer_band_frequency(0, 100)
+                await client.set_equalizer_params(user_eq)
+                logger.info("EQ settings applied successfully")
+            else:
+                logger.warning(
+                    f"API version {info.api_version} is too old. Minimum required: 1.9"
+                )
                 return False
-            except ClientConnectorError:
-                logger.error(f"Connection failed - device not reachable at {host}")
-                return False
-            except Exception as e:
-                logger.error(f"Error connecting to device: {e}")
-                return False
-
-            finally:
-                try:
-                    await client.disconnect()
-                    logger.info("Disconnected from device")
-                except Exception as e:
-                    logger.warning(f"Error during disconnect: {e}")
 
             return True
 
