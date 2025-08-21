@@ -111,6 +111,9 @@ async def connect_and_apply_eq(host, user_eq, timeout=5):
                 )
                 return False
 
+            await client.disconnect()
+            logger.info(f"Disconnected from {host}")
+
             return True
 
     except (TimeoutError, asyncio.TimeoutError):
