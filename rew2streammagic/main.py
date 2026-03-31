@@ -11,18 +11,13 @@ import logging
 import argparse
 from pathlib import Path
 from aiohttp import (
-    ClientSession,
     ClientConnectorError,
     ClientError,
-    ClientTimeout,
 )
 from aiostreammagic import StreamMagicClient, EQBand, UserEQ, EQFilterType, Info
 from packaging.version import Version
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Suppress all logs from libraries that spam tracebacks
@@ -32,7 +27,7 @@ logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 
 def parse_eq_file(file_path):
-    """Parse EQ file and return UserEQ object with band settings."""
+    """Parse EQ file and return a list of EQBand settings."""
     bands = []
     filter_map = {
         "LS": "LOWSHELF",
@@ -81,10 +76,20 @@ def parse_eq_file(file_path):
         logger.error(f"Unexpected error parsing file {file_path}: {e}")
         raise
 
-    return UserEQ(bands=bands)
+    return bands
 
 
-async def connect_and_apply_eq(host, user_eq, timeout=5):
+def _print_bands(bands):
+    for band in bands:
+        print(
+            f"  Band {band.index + 1}: {band.freq:5} Hz"
+            f" | Gain: {band.gain:+.1f} dB"
+            f" | Q: {band.q}"
+        )
+    print()
+
+
+async def connect_and_apply_eq(host, bands, timeout=5):
     """Connect to StreamMagic device and apply EQ settings."""
 
     # Validate IP address
@@ -97,35 +102,24 @@ async def connect_and_apply_eq(host, user_eq, timeout=5):
 
     try:
         # Create session with timeout
-        timeout_config = ClientTimeout(total=timeout)
-        async with ClientSession(timeout=timeout_config) as session:
-            logger.info(f"Attempting to connect to {host}")
-            client = StreamMagicClient(host, session=session)
-
-            await client.connect()
-            logger.info(f"Successfully connected to {host}")
-
-            # Get device info
-            info: Info = await client.get_info()
-            logger.info(f"Device API version: {info.api_version}")
+        async with StreamMagicClient(host) as client:
+            info: Info = client.info
+            print(f"Connected to {host} (API v{info.api_version})")
 
             if Version(info.api_version) >= Version("1.9"):
-                logger.info("Applying EQ settings...")
-                # Example of setting equalizer band gain and frequency
-                # await client.set_equalizer_band_gain(0, 3.0)
-                # await client.set_equalizer_band_frequency(0, 100)
-                await client.set_equalizer_params(user_eq)
-                logger.info("EQ settings applied successfully")
+                print("Applying EQ settings...")
+                await client.set_equalizer_params(bands)
+                applied: UserEQ = client.audio.user_eq
+                print()
+                print(f"Applied EQ (enabled: {applied.enabled}):")
+                _print_bands(applied.bands)
             else:
                 logger.warning(
                     f"API version {info.api_version} is too old. Minimum required: 1.9"
                 )
                 return False
 
-            await client.disconnect()
-            logger.info(f"Disconnected from {host}")
-
-            return True
+        return True
 
     except (TimeoutError, asyncio.TimeoutError):
         logger.error(f"Connection timed out to {host}")
@@ -148,7 +142,7 @@ async def main(eq_file_path, host, timeout=5, dry_run=False):
     """Main application logic."""
 
     if dry_run:
-        print("🔍 DRY RUN: Device connection will be skipped.")
+        print("DRY RUN: Device connection will be skipped.")
 
     eq_file = Path(eq_file_path)
 
@@ -158,36 +152,32 @@ async def main(eq_file_path, host, timeout=5, dry_run=False):
 
     try:
         # Parse EQ file
-        logger.info(f"Parsing EQ file: {eq_file}")
-        user_eq = parse_eq_file(eq_file)
+        print(f"Parsing EQ file: {eq_file}")
+        bands: list[EQBand] = parse_eq_file(eq_file)
 
-        if not user_eq.bands:
+        if not bands:
             logger.error("No equalizer bands found in the file.")
             return 1
 
-        # Display parsed bands
-        print("First 7 Equalizer Bands:")
-        for band in user_eq.bands:
-            print(
-                f"Band {band.index + 1}: Freq={band.freq}Hz, Gain={band.gain}dB, Q={band.q}"
-            )
-
         if dry_run:
-            print("🔍 DRY RUN: EQ file parsed successfully.")
+            print()
+            print(f"Parsed {len(bands)} band(s):")
+            _print_bands(bands)
+            print("DRY RUN: EQ file parsed successfully.")
             return 0
 
         # Connect and apply EQ
-        success = await connect_and_apply_eq(host, user_eq, timeout)
+        success = await connect_and_apply_eq(host, bands, timeout)
 
         if success:
-            print(f"✅ EQ settings successfully applied to device at {host}")
+            print(f"EQ settings successfully applied to device at {host}")
             return 0
         else:
-            print(f"❌ Failed to apply EQ settings to device at {host}")
+            logger.error(f"Failed to apply EQ settings to device at {host}")
             return 1
 
     except KeyboardInterrupt:
-        logger.info("Operation cancelled by user")
+        print("\nOperation cancelled by user")
         return 1
     except Exception as e:
         logger.error(f"Unexpected error in main: {e}")
