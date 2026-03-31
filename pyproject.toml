@@ -9,6 +9,8 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
+    "aiostreammagic>=2.12,<3.0",
+    "packaging>=26.0,<27",
 ]
 
 [project.scripts]
@@ -18,9 +20,6 @@ rew2streammagic = "rew2streammagic.main:cli"
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.dependencies]
-aiostreammagic = { git = "https://github.com/Solmath/aiostreammagic.git", branch = "feature/add-eq-support" }
-
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^4.2.0"
-ruff = "^0.12.5"
+pre-commit = "^4.5"
+ruff = "^0.15"
