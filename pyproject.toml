@@ -1,6 +1,6 @@
 [project]
 name = "rew2streammagic"
-version = "0.1.0"
+version = "0.2.0"
 description = "Apply REW equalizer profiles to StreamMagic device"
 authors = [
     {name = "Solmath",email = "33658856+Solmath@users.noreply.github.com"}
