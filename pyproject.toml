@@ -9,7 +9,7 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
-    "aiostreammagic>=2.12,<3.0",
+    "aiostreammagic>=2.13.2,<3.0",
     "packaging>=26.0,<27",
 ]
 
