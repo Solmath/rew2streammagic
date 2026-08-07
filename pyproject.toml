@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "aiostreammagic>=2.13.2,<3.0",
-    "packaging>=26.0,<27",
+    "packaging>=26.3,<27",
 ]
 
 [project.scripts]
